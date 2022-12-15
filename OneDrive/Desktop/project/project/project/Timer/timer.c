@@ -1,0 +1,115 @@
+/*
+ * timer.c
+ *
+ * Created: 11/15/2021 8:05:51 PM
+ *  Author: Mina
+ */ 
+#define  F_CPU 16000000UL
+#include <util/delay.h>
+#include <avr/interrupt.h>
+#include "Timer.h"
+void (*p2f)(void);
+void (*p3f)(void);
+void (*p4f)(void);
+void SETCALLBACK_TIMER1_OVR (void(*ptf)(void)){
+	p4f=ptf;
+}
+void SETCALLBACK_TIMER0_OVR (void(*ptf)(void)){
+	p2f = ptf;
+}
+void SETCALLBACK_TIMER0_OCR (void(*ptff)(void)){
+	p3f = ptff;
+}
+void timer_init(void){
+        TIM_TCNT0=0;
+#if TIM0_MODE_SELECT == TIM0_NORMAL_MODE 
+	CLR_Bit(TIM_TCCR0,TIM_WGM00);
+	CLR_Bit(TIM_TCCR0,TIM_WGM01);
+#elif TIM0_MODE_SELECT == TIM0_PWM_PHASE_MODE
+      SET_BiT(TIM_TCCR0,TIM_WGM00);
+      CLR_Bit(TIM_TCCR0,TIM_WGM01);
+#elif TIM0_MODE_SELECT == TIM0_CTC_MODE 
+	  CLR_Bit(TIM_TCCR0,TIM_WGM00);
+	  SET_BiT(TIM_TCCR0,TIM_WGM01);
+#elif TIM0_MODE_SELECT == TIM0_PWM_FAST_MODE 
+      SET_BiT(TIM_TCCR0,TIM_WGM00);
+      SET_BiT(TIM_TCCR0,TIM_WGM01);
+#endif
+#if TIM0_PRESCALLER_SELECT == TIM0_NO_CLK_SOURCE
+    TIM_TCCR0 = (TIM_TCCR0 & 0b11111000) | TIM0_NO_CLK_SOURCE;
+#elif TIM0_PRESCALLER_SELECT == TIM0_NO_PRESCALLER
+    TIM_TCCR0 = (TIM_TCCR0 & 0b11111000) | TIM0_NO_PRESCALLER;
+#elif TIM0_PRESCALLER_SELECT == TIM0_8_PRESCALLER
+    TIM_TCCR0 = (TIM_TCCR0 & 0b11111000) | TIM0_8_PRESCALLER;
+#elif TIM0_PRESCALLER_SELECT == TIM0_64_PRESCALLER
+    TIM_TCCR0 = (TIM_TCCR0 & 0b11111000) | TIM0_64_PRESCALLER;
+#elif TIM0_PRESCALLER_SELECT == TIM0_256_PRESCALLER
+    TIM_TCCR0 = (TIM_TCCR0 & 0b11111000) | TIM0_256_PRESCALLER;	
+#elif TIM0_PRESCALLER_SELECT == TIM0_1024_PRESCALLER
+    TIM_TCCR0 = (TIM_TCCR0 & 0b11111000) | TIM0_1024_PRESCALLER;
+#elif TIM0_PRESCALLER_SELECT == TIM0_EXT_FALLING
+    TIM_TCCR0 = (TIM_TCCR0 & 0b11111000) | TIM0_EXT_FALLING;
+#elif TIM0_PRESCALLER_SELECT == TIM0_EXT_RAISING
+    TIM_TCCR0 = (TIM_TCCR0 & 0b11111000) | TIM0_EXT_RAISING;
+#endif
+#if TIM0_INTERRUPT_MODE == NO_INTERRUPT
+	CLR_Bit(TIM_TIMSK,TIM_TOIE0);
+	CLR_Bit(TIM_TIMSK,TIM_OCIE0);
+	while(GET_Bit(TIM_TIFR,TIM_TOV0)==0);
+	SET_BiT(TIM_TIFR,TIM_TOV0);
+#elif TIM0_INTERRUPT_MODE == TIM0_TOV
+    SET_BiT(TIM_TIMSK,TIM_TOIE0);
+    CLR_Bit(TIM_TIMSK,TIM_OCIE0);
+#elif TIM0_INTERRUPT_MODE == TIM0_TOC
+    CLR_Bit(TIM_TIMSK,TIM_TOIE0);
+    SET_BiT(TIM_TIMSK,TIM_OCIE0);
+#endif
+}
+ 
+void timer_OCR(TU08 ocr_val){
+	TIM_OCR0 = ocr_val;
+}
+
+ISR(TIMER0_OVF_vect){
+	p2f();
+	
+}
+ISR(TIMER0_COMP_vect){
+	p3f();
+}
+////////////
+void PWM0_Init(void){
+	//DIO_DDRB |= 0x08;
+	//TIM_TCCR0 |= 0x68;
+	//TCCR2 |= 0x68;
+	TCCR1A |= 0b10100001;
+	//TCCR1A |= 0b10100010;
+	//TCCR1B |= 0b00011000;
+    TCCR1B |=0x04;
+	ICR1=4999;
+}
+void PWM0_GEN(TU08 duty){
+//	TIM_OCR0 = ((duty * 256)/100)-1;
+	//OCR2 =((duty * 256)/100)-1;
+	//OCR1B =((duty * 256)/100)-1;
+	OCR1B =duty+40;
+	//OCR1A =((duty * 256)/100)-1;
+	
+}
+void PWM0_Start (void){
+	//TIM_TCCR0 |=0x01;
+  //TCCR2 |=0x01;
+	TCCR1A |=0x01;
+}
+////////////
+void timer1_init (void){
+	SET_BiT(TIM_TIMSK,TIM_TOIE1);
+	//SET_BiT(TIM_TIFR,TIM_ICF1);
+	//SET_BiT(TIM_TIFR,TIM_TOV1);
+	SET_BiT(TCCR1B,CS12);
+	//SET_BiT(TCCR1B,CS10);
+}
+//////
+ISR(TIMER1_OVF_vect){
+	p4f();
+}
