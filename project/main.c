@@ -20,12 +20,13 @@ int main(void)
 		    int_Dhtt();
 		}
 		lcd_clear();
+		_delay_ms(5);
 		while (C2_INPUT ==1){
         	soil();
 			rain();
 		}
 		lcd_clear();
-		
+		_delay_ms(5);
 	}
 
 }
